@@ -1,0 +1,25 @@
+[package]
+name = "atomic_repr"
+version = "0.1.0"
+edition = "2024"
+authors = ["wisdgod <nav@wisdgod.com>"]
+license = "MIT OR Apache-2.0"
+description = "Generic atomic wrapper for Copy types with a primitive memory representation"
+repository = "https://github.com/wisdgod/atomic_repr"
+readme = "README.md"
+keywords = ["atomic", "enum", "no-std", "concurrency"]
+categories = ["concurrency", "no-std", "no-std::no-alloc"]
+
+[features]
+default = []
+# Requires a nightly compiler. Makes `AtomicRepr` a `const` trait so that
+# `Atomic::new` is a `const fn` usable in `static` initializers.
+nightly = []
+# Use `portable-atomic` as the backend instead of `core::sync::atomic`.
+portable-atomic = ["dep:portable-atomic"]
+
+[dependencies]
+portable-atomic = { version = "1", optional = true, default-features = false }
+
+[package.metadata.docs.rs]
+all-features = true
