@@ -6,7 +6,7 @@
 
 Atomic wrapper for types with a primitive memory representation. `no_std`, zero dependencies by default.
 
-`Atomic<T>` provides type-safe atomic operations for any `Copy` type whose memory layout matches a primitive atomic type (`u8`, `i32`, `usize`, `bool`, ...). The bridge between `T` and its storage is the `AtomicRepr` trait, which the `impl_atomic_repr!` macro implements for `#[repr(uN)]` enums and other layout-compatible types.
+`Atomic<T>` provides type-safe atomic operations for any `Copy` type whose memory layout matches a primitive atomic type (`u8`, `i32`, `usize`, `bool`, `f32`, `f64`, ...). The bridge between `T` and its storage is the `AtomicRepr` trait, which the `impl_atomic_repr!` macro implements for `#[repr(uN)]` enums and other layout-compatible types.
 
 ```rust
 use atomic_repr::{Atomic, Ordering, impl_atomic_repr};
@@ -26,11 +26,13 @@ assert_eq!(state.load(Ordering::Relaxed), State::Running);
 
 ## Bitwise and arithmetic operations
 
-`fetch_and`, `fetch_add`, and friends can produce arbitrary bit patterns, so they are only *safe* when every primitive value is a valid `T`. Types assert this by implementing the `AnyBitPattern` marker trait (all primitive integers and `bool` already do). For other types, the `fetch_*_unchecked` variants are available as an `unsafe` escape hatch when the call site can guarantee validity of the result.
+`fetch_and`, `fetch_add`, and friends can produce arbitrary bit patterns, so they are only *safe* when every primitive value is a valid `T`. Types assert this by implementing the `AnyBitPattern` marker trait (all primitive integers, floats, and `bool` already do). For other types, the `fetch_*_unchecked` variants are available as an `unsafe` escape hatch when the call site can guarantee validity of the result.
+
+Note that `Atomic<f32>` / `Atomic<f64>` store the float's bits in an integer atomic (`to_bits` / `from_bits`), so their `fetch_*` operations act on the raw bits, *not* floating-point arithmetic.
 
 ## Feature flags
 
-- **`portable-atomic`** — use [`portable-atomic`](https://crates.io/crates/portable-atomic) as the backend instead of `core::sync::atomic`, supporting targets without native atomics.
+- **`portable-atomic`** — use [`portable-atomic`](https://crates.io/crates/portable-atomic) as the backend instead of `core::sync::atomic`, supporting targets without native atomics and additionally providing 128-bit atomics (`Atomic<u128>` / `Atomic<i128>`).
 - **`nightly`** — requires a nightly compiler. Makes `AtomicRepr` a `const` trait so that `Atomic::new` is a `const fn`, allowing `static` initializers:
 
 ```rust

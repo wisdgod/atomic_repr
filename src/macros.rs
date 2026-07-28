@@ -82,6 +82,11 @@ macro_rules! define_atomic_new {
 /// unlock the safe `fetch_*` methods; otherwise the `unsafe`
 /// `fetch_*_unchecked` variants remain available.
 ///
+/// Multiple declarations can be batched, with an optional trailing comma:
+/// `impl_atomic_repr!(A = u8, B = u16,)`. Generic types are not supported
+/// (their size cannot be checked at declaration site); implement
+/// [`AtomicRepr`](crate::AtomicRepr) manually for those.
+///
 /// # Examples
 ///
 /// ```
@@ -103,27 +108,31 @@ macro_rules! define_atomic_new {
 /// ```
 #[macro_export]
 macro_rules! impl_atomic_repr {
-    ($T:ty = $Base:ty) => {
-        const _: () = {
-            if ::core::mem::size_of::<$T>() != ::core::mem::size_of::<$Base>() {
-                panic!(concat!(
-                    "[atomic_repr] Size mismatch!\n",
-                    "Type: ", stringify!($T), "\n",
-                    "Base: ", stringify!($Base), "\n",
-                    "Hint: Did you forget to add `#[repr(", stringify!($Base), ")]` to your type?"
-                ));
-            }
+    ($($T:ty = $Base:ty),+ $(,)?) => {
+        $(
+            const _: () = {
+                ::core::assert!(
+                    ::core::mem::size_of::<$T>() == ::core::mem::size_of::<$Base>(),
+                    concat!(
+                        "[atomic_repr] Size mismatch!\n",
+                        "Type: ", stringify!($T), "\n",
+                        "Base: ", stringify!($Base), "\n",
+                        "Hint: Did you forget to add `#[repr(", stringify!($Base), ")]` to your type?"
+                    )
+                );
 
-            if ::core::mem::align_of::<$T>() != ::core::mem::align_of::<$Base>() {
-                panic!(concat!(
-                    "[atomic_repr] Alignment mismatch!\n",
-                    "Type: ", stringify!($T), " vs Base: ", stringify!($Base), "\n",
-                    "Ensure the alignment matches the backing primitive."
-                ));
-            }
-        };
+                ::core::assert!(
+                    ::core::mem::align_of::<$T>() == ::core::mem::align_of::<$Base>(),
+                    concat!(
+                        "[atomic_repr] Alignment mismatch!\n",
+                        "Type: ", stringify!($T), " vs Base: ", stringify!($Base), "\n",
+                        "Ensure the alignment matches the backing primitive."
+                    )
+                );
+            };
 
-        $crate::__atomic_repr_impl!($T = $Base);
+            $crate::__atomic_repr_impl!($T = $Base);
+        )+
     };
 }
 

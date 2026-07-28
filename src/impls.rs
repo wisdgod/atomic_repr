@@ -58,6 +58,10 @@ macro_rules! impl_atomic_storage {
                 #[cfg(feature = "portable-atomic")]
                 return self.fetch_update(s, f, func);
             }
+            #[inline(always)]
+            fn into_inner(self) -> $Prim { self.into_inner() }
+            #[inline(always)]
+            fn get_mut(&mut self) -> &mut $Prim { self.get_mut() }
         }
 
         impl AtomicBitwise for $Atom {
@@ -136,4 +140,41 @@ impl_int_atomics! {
     i64   => AtomicI64,
     usize => AtomicUsize,
     isize => AtomicIsize,
+}
+
+// 128-bit atomics are only available through the portable-atomic backend.
+#[cfg(feature = "portable-atomic")]
+impl_int_atomics! {
+    u128 => AtomicU128,
+    i128 => AtomicI128,
+}
+
+macro_rules! impl_float_atomics {
+    ($($Float:ty : $Prim:ty => $Atom:ident),+ $(,)?) => {
+        $(
+            maybe_const_unsafe! {
+                impl AtomicRepr for $Float {
+                    type Storage = backend::$Atom;
+                    #[inline(always)]
+                    fn const_new(val: Self) -> Self::Storage {
+                        <backend::$Atom>::new(val.to_bits())
+                    }
+                    #[inline(always)]
+                    fn into_prim(self) -> $Prim { self.to_bits() }
+                    #[inline(always)]
+                    unsafe fn from_prim(val: $Prim) -> Self { <$Float>::from_bits(val) }
+                }
+            }
+
+            // SAFETY: Every bit pattern of the backing integer is a valid
+            // float (including NaNs), and `to_bits`/`from_bits` are
+            // bit-identical reinterpretations.
+            unsafe impl AnyBitPattern for $Float {}
+        )+
+    };
+}
+
+impl_float_atomics! {
+    f32: u32 => AtomicU32,
+    f64: u64 => AtomicU64,
 }

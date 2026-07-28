@@ -228,11 +228,36 @@ impl<T: AtomicRepr> Atomic<T> {
             Err(v) => Err(unsafe { T::from_prim(v) }),
         }
     }
+
+    /// Consumes the atomic and returns the contained value.
+    ///
+    /// This is safe because passing `self` by value guarantees that no other
+    /// threads are concurrently accessing the atomic data.
+    #[inline]
+    pub fn into_inner(self) -> T {
+        // SAFETY: The stored value is always a valid `T`.
+        unsafe { T::from_prim(self.inner.into_inner()) }
+    }
+
+    /// Returns a mutable reference to the underlying value.
+    ///
+    /// This is safe because the mutable reference guarantees that no other
+    /// threads are concurrently accessing the atomic data, so no atomic
+    /// instructions are needed.
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut T {
+        let prim = self.inner.get_mut();
+        // SAFETY: The `AtomicRepr` contract requires `T` and the primitive
+        // to have identical size and alignment with transmute-equivalent
+        // conversions, and the stored bit pattern is always a valid `T`.
+        // The exclusive borrow prevents concurrent access.
+        unsafe { &mut *core::ptr::from_mut(prim).cast::<T>() }
+    }
 }
 
 impl<T: AtomicRepr + fmt::Debug> fmt::Debug for Atomic<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.load(Ordering::Relaxed).fmt(f)
+        f.debug_tuple("Atomic").field(&self.load(Ordering::Relaxed)).finish()
     }
 }
 

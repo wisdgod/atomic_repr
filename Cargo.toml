@@ -1,12 +1,11 @@
 [package]
 name = "atomic_repr"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["wisdgod <nav@wisdgod.com>"]
 license = "MIT OR Apache-2.0"
 description = "Generic atomic wrapper for Copy types with a primitive memory representation"
 repository = "https://github.com/wisdgod/atomic_repr"
-readme = "README.md"
 keywords = ["atomic", "enum", "no-std", "concurrency"]
 categories = ["concurrency", "no-std", "no-std::no-alloc"]
 
@@ -19,7 +18,8 @@ nightly = []
 portable-atomic = ["dep:portable-atomic"]
 
 [dependencies]
-portable-atomic = { version = "1", optional = true, default-features = false }
+# `fallback` guarantees 128-bit atomics are available on all targets.
+portable-atomic = { version = "1", optional = true, default-features = false, features = ["fallback"] }
 
 [package.metadata.docs.rs]
 all-features = true

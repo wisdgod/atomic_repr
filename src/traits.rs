@@ -50,6 +50,15 @@ pub trait AtomicStorage: Sized + Send + Sync {
     ) -> Result<Self::Primitive, Self::Primitive>
     where
         F: FnMut(Self::Primitive) -> Option<Self::Primitive>;
+
+    /// Consumes the atomic and returns the contained primitive.
+    fn into_inner(self) -> Self::Primitive;
+
+    /// Returns a mutable reference to the underlying primitive.
+    ///
+    /// The exclusive borrow guarantees no concurrent access, so no atomic
+    /// instructions are needed.
+    fn get_mut(&mut self) -> &mut Self::Primitive;
 }
 
 /// Atomic bitwise operations on the underlying primitive.
@@ -76,12 +85,18 @@ maybe_const_unsafe! {
     ///
     /// # Safety
     ///
-    /// Implementors must ensure that every value produced by
-    /// [`into_prim`](AtomicRepr::into_prim) and
-    /// [`const_new`](AtomicRepr::const_new) is a bit pattern that
-    /// [`from_prim`](AtomicRepr::from_prim) maps back to a valid `Self`, and
-    /// that `Self` and the storage primitive have identical size and
-    /// alignment.
+    /// Implementors must ensure that:
+    ///
+    /// - every value produced by [`into_prim`](AtomicRepr::into_prim) and
+    ///   [`const_new`](AtomicRepr::const_new) is a bit pattern that
+    ///   [`from_prim`](AtomicRepr::from_prim) maps back to a valid `Self`;
+    /// - `Self` and the storage primitive have identical size and alignment;
+    /// - [`into_prim`](AtomicRepr::into_prim) and
+    ///   [`from_prim`](AtomicRepr::from_prim) are value-preserving bit
+    ///   reinterpretations (equivalent to `transmute`): the result has the
+    ///   exact bit pattern of the argument.
+    ///   [`Atomic::get_mut`](crate::Atomic::get_mut) relies on this to
+    ///   reinterpret a reference to the primitive as a reference to `Self`.
     pub trait AtomicRepr: Copy {
         type Storage: AtomicStorage;
 
